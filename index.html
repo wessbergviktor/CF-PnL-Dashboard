@@ -775,13 +775,15 @@
         const grossProfit = revenue - cogs;
         const opex = data.expense;
         const operatingIncome = grossProfit - opex;
+        const ebitda = grossProfit - opex; // EBITDA proxy (D&A not separately tracked)
         const othNet = Math.abs(data.othIncome) - data.othExpense;
         const netIncome = operatingIncome + othNet;
         const gpMargin = revenue > 0 ? (grossProfit / revenue * 100) : 0;
         const opMargin = revenue > 0 ? (operatingIncome / revenue * 100) : 0;
+        const ebitdaMargin = revenue > 0 ? (ebitda / revenue * 100) : 0;
         
         return {
-            revenue, cogs, grossProfit, opex, operatingIncome, othNet, netIncome, gpMargin, opMargin
+            revenue, cogs, grossProfit, opex, operatingIncome, ebitda, ebitdaMargin, othNet, netIncome, gpMargin, opMargin
         };
     }
 
@@ -792,7 +794,7 @@
         
         const kpiGrid = document.getElementById('kpiGrid');
         kpiGrid.innerHTML = `
-            <div class="kpi-card" style="grid-column: span 1; background: linear-gradient(135deg, var(--cf-dark) 0%, #2d2d2d 100%); color: white;">
+            <div class="kpi-card" style="background: linear-gradient(135deg, var(--cf-dark) 0%, #2d2d2d 100%); color: white;">
                 <div class="kpi-label" style="color: rgba(255,255,255,0.7);">Currency</div>
                 <div class="kpi-value" style="font-size: 22px;">${currentCurrency.code}</div>
                 <div class="kpi-change" style="color: rgba(255,255,255,0.7);">
@@ -814,11 +816,11 @@
                 <div class="kpi-label">Operating Expenses</div>
                 <div class="kpi-value">${formatCurrency(metrics.opex)}</div>
             </div>
-            <div class="kpi-card">
-                <div class="kpi-label">Operating Income</div>
-                <div class="kpi-value ${metrics.operatingIncome >= 0 ? 'positive' : 'negative'}">${formatCurrency(metrics.operatingIncome)}</div>
+            <div class="kpi-card" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);">
+                <div class="kpi-label" style="color: #92400e;">EBITDA</div>
+                <div class="kpi-value ${metrics.ebitda >= 0 ? 'positive' : 'negative'}">${formatCurrency(metrics.ebitda)}</div>
                 <div class="kpi-change">
-                    <span>Op Margin: <strong>${metrics.opMargin.toFixed(1)}%</strong></span>
+                    <span style="color: #92400e;">EBITDA Margin: <strong>${metrics.ebitdaMargin.toFixed(1)}%</strong></span>
                 </div>
             </div>
             <div class="kpi-card">
@@ -1013,6 +1015,11 @@
                     <td class="text-right">${formatCurrency(metrics.opex)}</td>
                     <td class="text-right">${(metrics.opex / metrics.revenue * 100).toFixed(1)}%</td>
                 </tr>
+                <tr class="row-total" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);">
+                    <td style="color: #92400e;">EBITDA</td>
+                    <td class="text-right ${metrics.ebitda >= 0 ? 'positive' : 'negative'}" style="font-weight:700;">${formatCurrency(metrics.ebitda)}</td>
+                    <td class="text-right" style="color: #92400e; font-weight:600;">${metrics.ebitdaMargin.toFixed(1)}%</td>
+                </tr>
                 <tr class="row-total">
                     <td>OPERATING INCOME</td>
                     <td class="text-right ${metrics.operatingIncome >= 0 ? 'positive' : 'negative'}">${formatCurrency(metrics.operatingIncome)}</td>
@@ -1044,103 +1051,74 @@
             <thead>
                 <tr>
                     <th>Entity</th>
-                    <th class="text-right">Local Curr</th>
-                    <th class="text-right">Q1 GP (USD)</th>
-                    <th class="text-right">Q2 GP (USD)</th>
-                    <th class="text-right">Q3 GP (USD)</th>
-                    <th class="text-right">Q4 QTD (USD)</th>
-                    <th class="text-right">YTD GP (USD)</th>
-                    <th class="text-right">GP Margin</th>
+                    <th class="text-right">Curr</th>
+                    <th class="text-right">YTD Revenue</th>
+                    <th class="text-right">YTD GP</th>
+                    <th class="text-right">GP %</th>
+                    <th class="text-right" style="background:#fef3c7;color:#92400e;">YTD EBITDA</th>
+                    <th class="text-right" style="background:#fef3c7;color:#92400e;">EBITDA %</th>
                 </tr>
             </thead>
             <tbody>
         `;
 
         const entities = Object.entries(data2025);
-        let totals = { q1: 0, q2: 0, q3: 0, q4: 0, ytd: 0, revenue: 0 };
+        let totals = { revenue: 0, gp: 0, ebitda: 0 };
 
         entities.forEach(([id, sub]) => {
             const curr = currencyMap[id];
             const currCode = subsidiaryCurrency[id];
             
-            // Calculate GP for each quarter, converting to USD
-            let q1gp = 0, q2gp = 0, q3gp = 0, q4gp = 0, ytdgp = 0, ytdRev = 0;
+            // Calculate YTD metrics converting to USD
+            let ytdRev = 0, ytdGp = 0, ytdEbitda = 0;
             
-            quarters.q1.forEach(m => {
+            months.forEach(m => {
                 if (sub.monthly[m]) {
                     const rate = fxRates[currCode][m];
-                    const gp = (Math.abs(sub.monthly[m].income) - sub.monthly[m].cogs) * rate;
                     const rev = Math.abs(sub.monthly[m].income) * rate;
-                    q1gp += gp;
-                    ytdgp += gp;
-                    ytdRev += rev;
-                }
-            });
-            quarters.q2.forEach(m => {
-                if (sub.monthly[m]) {
-                    const rate = fxRates[currCode][m];
                     const gp = (Math.abs(sub.monthly[m].income) - sub.monthly[m].cogs) * rate;
-                    const rev = Math.abs(sub.monthly[m].income) * rate;
-                    q2gp += gp;
-                    ytdgp += gp;
+                    const ebitda = (Math.abs(sub.monthly[m].income) - sub.monthly[m].cogs - sub.monthly[m].expense) * rate;
                     ytdRev += rev;
-                }
-            });
-            quarters.q3.forEach(m => {
-                if (sub.monthly[m]) {
-                    const rate = fxRates[currCode][m];
-                    const gp = (Math.abs(sub.monthly[m].income) - sub.monthly[m].cogs) * rate;
-                    const rev = Math.abs(sub.monthly[m].income) * rate;
-                    q3gp += gp;
-                    ytdgp += gp;
-                    ytdRev += rev;
-                }
-            });
-            quarters.q4.forEach(m => {
-                if (sub.monthly[m]) {
-                    const rate = fxRates[currCode][m];
-                    const gp = (Math.abs(sub.monthly[m].income) - sub.monthly[m].cogs) * rate;
-                    const rev = Math.abs(sub.monthly[m].income) * rate;
-                    q4gp += gp;
-                    ytdgp += gp;
-                    ytdRev += rev;
+                    ytdGp += gp;
+                    ytdEbitda += ebitda;
                 }
             });
 
-            const gpMargin = ytdRev > 0 ? (ytdgp / ytdRev * 100) : 0;
+            const gpMargin = ytdRev > 0 ? (ytdGp / ytdRev * 100) : 0;
+            const ebitdaMargin = ytdRev > 0 ? (ytdEbitda / ytdRev * 100) : 0;
 
-            totals.q1 += q1gp;
-            totals.q2 += q2gp;
-            totals.q3 += q3gp;
-            totals.q4 += q4gp;
-            totals.ytd += ytdgp;
             totals.revenue += ytdRev;
+            totals.gp += ytdGp;
+            totals.ebitda += ytdEbitda;
+
+            const ebitdaClass = ytdEbitda >= 0 ? 'positive' : 'negative';
 
             html += `
                 <tr>
                     <td>${sub.name}</td>
                     <td class="text-right"><span style="background:#f3f4f6;padding:2px 8px;border-radius:4px;font-size:11px;">${curr.code}</span></td>
-                    <td class="text-right">${formatCurrencyUSD(q1gp)}</td>
-                    <td class="text-right">${formatCurrencyUSD(q2gp)}</td>
-                    <td class="text-right">${formatCurrencyUSD(q3gp)}</td>
-                    <td class="text-right">${formatCurrencyUSD(q4gp)}</td>
-                    <td class="text-right"><strong>${formatCurrencyUSD(ytdgp)}</strong></td>
+                    <td class="text-right">${formatCurrencyUSD(ytdRev)}</td>
+                    <td class="text-right">${formatCurrencyUSD(ytdGp)}</td>
                     <td class="text-right">${gpMargin.toFixed(1)}%</td>
+                    <td class="text-right ${ebitdaClass}" style="background:#fffbeb;font-weight:600;">${formatCurrencyUSD(ytdEbitda)}</td>
+                    <td class="text-right" style="background:#fffbeb;font-weight:600;">${ebitdaMargin.toFixed(1)}%</td>
                 </tr>
             `;
         });
 
-        const totalMargin = totals.revenue > 0 ? (totals.ytd / totals.revenue * 100) : 0;
+        const totalGpMargin = totals.revenue > 0 ? (totals.gp / totals.revenue * 100) : 0;
+        const totalEbitdaMargin = totals.revenue > 0 ? (totals.ebitda / totals.revenue * 100) : 0;
+        const totalEbitdaClass = totals.ebitda >= 0 ? 'positive' : 'negative';
+        
         html += `
             <tr class="row-total">
                 <td>CONSOLIDATED TOTAL</td>
                 <td class="text-right"><span style="background:#1a1a1a;color:white;padding:2px 8px;border-radius:4px;font-size:11px;">USD</span></td>
-                <td class="text-right">${formatCurrencyUSD(totals.q1)}</td>
-                <td class="text-right">${formatCurrencyUSD(totals.q2)}</td>
-                <td class="text-right">${formatCurrencyUSD(totals.q3)}</td>
-                <td class="text-right">${formatCurrencyUSD(totals.q4)}</td>
-                <td class="text-right">${formatCurrencyUSD(totals.ytd)}</td>
-                <td class="text-right">${totalMargin.toFixed(1)}%</td>
+                <td class="text-right">${formatCurrencyUSD(totals.revenue)}</td>
+                <td class="text-right">${formatCurrencyUSD(totals.gp)}</td>
+                <td class="text-right">${totalGpMargin.toFixed(1)}%</td>
+                <td class="text-right ${totalEbitdaClass}" style="background:#fef3c7;font-weight:700;">${formatCurrencyUSD(totals.ebitda)}</td>
+                <td class="text-right" style="background:#fef3c7;font-weight:700;">${totalEbitdaMargin.toFixed(1)}%</td>
             </tr>
         </tbody>`;
         html += `<tfoot><tr><td colspan="8" style="font-size:11px;color:#6b7280;padding-top:15px;"><em>All values converted to USD using monthly average FX rates from NetSuite. Individual entity views show local currency.</em></td></tr></tfoot>`;
@@ -1371,8 +1349,13 @@
             const d = subData.monthly[month];
             const rev = Math.abs(d.income);
             const gp = rev - d.cogs;
+            const ebitda = gp - d.expense;
             const opIncome = gp - d.expense;
-            return { revenue: rev, cogs: d.cogs, grossProfit: gp, opex: d.expense, opIncome, gpMargin: rev > 0 ? (gp/rev*100) : 0 };
+            return { 
+                revenue: rev, cogs: d.cogs, grossProfit: gp, opex: d.expense, opIncome, ebitda,
+                gpMargin: rev > 0 ? (gp/rev*100) : 0,
+                ebitdaMargin: rev > 0 ? (ebitda/rev*100) : 0
+            };
         };
         
         const currentMonthData = getMonthMetrics(lastMonth);
@@ -1400,10 +1383,11 @@
             execSummary.points.push(`This entity operates as a cost center with no direct revenue recognition.`);
         }
         
-        if (metrics.operatingIncome >= 0) {
-            execSummary.points.push(`Operating income positive at <span class="metric">${fmtCurr(metrics.operatingIncome)}</span>, representing a <span class="metric">${metrics.opMargin.toFixed(1)}%</span> operating margin.`);
+        // EBITDA highlight in executive summary
+        if (metrics.ebitda >= 0) {
+            execSummary.points.push(`EBITDA of <span class="metric">${fmtCurr(metrics.ebitda)}</span> achieved, representing <span class="metric">${metrics.ebitdaMargin.toFixed(1)}%</span> EBITDA margin.`);
         } else {
-            execSummary.points.push(`Operating loss of <span class="metric">${fmtCurr(Math.abs(metrics.operatingIncome))}</span>. Cost management focus required.`);
+            execSummary.points.push(`Negative EBITDA of <span class="metric">${fmtCurr(Math.abs(metrics.ebitda))}</span> - profitability improvement needed.`);
         }
         
         if (metrics.netIncome >= 0) {
@@ -1468,7 +1452,73 @@
         
         if (marginAnalysis.points.length > 0) takeaways.push(marginAnalysis);
         
-        // 4. COST ANALYSIS
+        // 4. EBITDA PERFORMANCE (Key Financial Goal)
+        const ebitdaAnalysis = { title: '⭐ EBITDA Performance', type: metrics.ebitda >= 0 ? 'positive' : 'negative', points: [] };
+        
+        if (currentMonthData && priorMonthData) {
+            const ebitdaChange = currentMonthData.ebitda - priorMonthData.ebitda;
+            const ebitdaMarginChange = currentMonthData.ebitdaMargin - priorMonthData.ebitdaMargin;
+            
+            if (Math.abs(ebitdaChange) > 1000) {
+                const direction = ebitdaChange > 0 ? 'improved' : 'declined';
+                const changeClass = ebitdaChange > 0 ? 'positive-change' : 'negative-change';
+                ebitdaAnalysis.points.push(`${lastMonth} EBITDA ${direction} by <span class="${changeClass}">${fmtCurr(Math.abs(ebitdaChange))}</span> vs ${priorMonth}.`);
+            }
+            
+            if (Math.abs(ebitdaMarginChange) > 0.5) {
+                const direction = ebitdaMarginChange > 0 ? 'expanded' : 'contracted';
+                const changeClass = ebitdaMarginChange > 0 ? 'positive-change' : 'negative-change';
+                ebitdaAnalysis.points.push(`EBITDA margin ${direction} by <span class="${changeClass}">${Math.abs(ebitdaMarginChange).toFixed(1)}pp</span> (${priorMonthData.ebitdaMargin.toFixed(1)}% → ${currentMonthData.ebitdaMargin.toFixed(1)}%).`);
+            }
+        }
+        
+        // EBITDA margin benchmarks
+        if (metrics.revenue > 0) {
+            if (metrics.ebitdaMargin > 15) {
+                ebitdaAnalysis.points.push(`EBITDA margin of <span class="metric">${metrics.ebitdaMargin.toFixed(1)}%</span> exceeds target threshold - strong operational performance.`);
+                ebitdaAnalysis.type = 'positive';
+            } else if (metrics.ebitdaMargin > 5) {
+                ebitdaAnalysis.points.push(`EBITDA margin of <span class="metric">${metrics.ebitdaMargin.toFixed(1)}%</span> - on track but room for improvement.`);
+                ebitdaAnalysis.type = 'neutral';
+            } else if (metrics.ebitdaMargin > 0) {
+                ebitdaAnalysis.points.push(`EBITDA margin of <span class="metric">${metrics.ebitdaMargin.toFixed(1)}%</span> - focus on cost optimization needed.`);
+                ebitdaAnalysis.type = 'highlight';
+            } else {
+                ebitdaAnalysis.points.push(`Negative EBITDA margin of <span class="metric">${metrics.ebitdaMargin.toFixed(1)}%</span> - requires immediate attention.`);
+                ebitdaAnalysis.type = 'negative';
+            }
+        }
+        
+        // EBITDA trend for YTD
+        if (period === 'ytd' && subData.monthly) {
+            const q1Ebitda = ['Jan','Feb','Mar'].reduce((sum, m) => {
+                if (subData.monthly[m]) {
+                    const rev = Math.abs(subData.monthly[m].income);
+                    return sum + (rev - subData.monthly[m].cogs - subData.monthly[m].expense);
+                }
+                return sum;
+            }, 0);
+            const q3Ebitda = ['Jul','Aug','Sep'].reduce((sum, m) => {
+                if (subData.monthly[m]) {
+                    const rev = Math.abs(subData.monthly[m].income);
+                    return sum + (rev - subData.monthly[m].cogs - subData.monthly[m].expense);
+                }
+                return sum;
+            }, 0);
+            
+            if (q1Ebitda !== 0) {
+                const ebitdaTrend = ((q3Ebitda - q1Ebitda) / Math.abs(q1Ebitda)) * 100;
+                if (Math.abs(ebitdaTrend) > 10) {
+                    const direction = ebitdaTrend > 0 ? 'growth' : 'decline';
+                    const changeClass = ebitdaTrend > 0 ? 'positive-change' : 'negative-change';
+                    ebitdaAnalysis.points.push(`Q3 vs Q1 EBITDA ${direction}: <span class="${changeClass}">${fmtPct(ebitdaTrend)}</span>.`);
+                }
+            }
+        }
+        
+        if (ebitdaAnalysis.points.length > 0) takeaways.push(ebitdaAnalysis);
+        
+        // 5. COST ANALYSIS
         const costAnalysis = { title: '📉 Cost Management', type: 'neutral', points: [] };
         
         if (currentMonthData && priorMonthData && priorMonthData.opex > 0) {
@@ -1494,7 +1544,7 @@
         
         if (costAnalysis.points.length > 0) takeaways.push(costAnalysis);
         
-        // 5. TREND & OUTLOOK (for YTD)
+        // 6. TREND & OUTLOOK (for YTD)
         if (period === 'ytd' && subData.monthly) {
             const trendAnalysis = { title: '🔮 Trends & Outlook', type: 'highlight', points: [] };
             
@@ -1524,15 +1574,26 @@
             if (trendAnalysis.points.length > 0) takeaways.push(trendAnalysis);
         }
         
-        // 6. ATTENTION ITEMS
+        // 7. ATTENTION ITEMS
         const attentionItems = { title: '⚠️ Items Requiring Attention', type: 'negative', points: [] };
         
+        if (metrics.ebitda < 0 && metrics.revenue > 0) {
+            attentionItems.points.push(`Negative EBITDA of <span class="metric">${fmtCurr(Math.abs(metrics.ebitda))}</span> - immediate action required to achieve profitability target.`);
+        }
+        
         if (metrics.netIncome < 0) {
-            attentionItems.points.push(`Entity operating at a loss - requires cost reduction or revenue growth initiatives.`);
+            attentionItems.points.push(`Entity operating at a net loss - requires cost reduction or revenue growth initiatives.`);
         }
         
         if (metrics.gpMargin < 20 && metrics.revenue > 0) {
             attentionItems.points.push(`Low gross margin suggests pricing or media cost issues.`);
+        }
+        
+        if (currentMonthData && priorMonthData && priorMonthData.ebitda > 0) {
+            const ebitdaDecline = ((currentMonthData.ebitda - priorMonthData.ebitda) / priorMonthData.ebitda) * 100;
+            if (ebitdaDecline < -20) {
+                attentionItems.points.push(`EBITDA declined ${Math.abs(ebitdaDecline).toFixed(0)}% vs prior month - investigate drivers.`);
+            }
         }
         
         if (currentMonthData && priorMonthData && priorMonthData.revenue > 0) {
