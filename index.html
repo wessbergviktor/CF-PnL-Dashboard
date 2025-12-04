@@ -225,6 +225,73 @@
             height: 200px;
             color: var(--cf-gray);
         }
+        /* Key Takeaways Styles */
+        .takeaways-container {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .takeaways-timestamp {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 20px;
+        }
+        .takeaways-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+        .takeaway-card {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 4px solid var(--cf-red);
+        }
+        .takeaway-card.positive { border-left-color: #10b981; }
+        .takeaway-card.negative { border-left-color: #ef4444; }
+        .takeaway-card.neutral { border-left-color: #6b7280; }
+        .takeaway-card.highlight { border-left-color: #f59e0b; background: #fffbeb; }
+        .takeaway-card h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .takeaway-card h4 .icon { font-size: 18px; }
+        .takeaway-card ul {
+            margin: 0;
+            padding-left: 18px;
+        }
+        .takeaway-card li {
+            font-size: 13px;
+            color: #4b5563;
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+        .takeaway-card li:last-child { margin-bottom: 0; }
+        .takeaway-card .metric {
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+        .takeaway-card .positive-change { color: #10b981; }
+        .takeaway-card .negative-change { color: #ef4444; }
+        .executive-summary {
+            grid-column: span 2;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            color: white;
+            border-left: none;
+        }
+        .executive-summary h4 { color: white; }
+        .executive-summary li { color: rgba(255,255,255,0.9); }
+        .executive-summary .metric { color: #fbbf24; }
+        @media (max-width: 900px) {
+            .takeaways-grid { grid-template-columns: 1fr; }
+            .executive-summary { grid-column: span 1; }
+        }
     </style>
 </head>
 <body>
@@ -277,6 +344,7 @@
         <button class="tab-btn" onclick="showTab('pnl')">P&L Detail</button>
         <button class="tab-btn" onclick="showTab('quarterly')">Quarterly View</button>
         <button class="tab-btn" onclick="showTab('comparison')">YoY Comparison</button>
+        <button class="tab-btn" onclick="showTab('takeaways')">Key Takeaways</button>
     </nav>
 
     <main class="main-content">
@@ -339,6 +407,17 @@
                 <div class="chart-container">
                     <h3 class="section-title">YoY Growth %</h3>
                     <div class="chart-wrapper"><canvas id="yoyGrowthChart"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- KEY TAKEAWAYS TAB -->
+        <div id="takeaways" class="tab-panel">
+            <div class="takeaways-container">
+                <h3 class="section-title">Executive Summary <span class="subsidiary-badge" id="takeawaysSubsidiary"></span><span class="period-badge" id="takeawaysPeriod"></span></h3>
+                <div class="takeaways-timestamp" id="takeawaysTimestamp"></div>
+                <div class="takeaways-grid" id="takeawaysContent">
+                    <!-- Dynamic content will be inserted here -->
                 </div>
             </div>
         </div>
@@ -1273,6 +1352,228 @@
         if (tabId === 'comparison') updateYoYCharts();
     }
 
+    function generateTakeaways(subData, subId, period) {
+        const takeaways = [];
+        const periodData = getPeriodData(subData, period);
+        const metrics = calculateMetrics(periodData);
+        const isConsolidated = subId === 'consolidated';
+        const currCode = isConsolidated ? 'USD' : subsidiaryCurrency[subId];
+        
+        // Get period months for analysis
+        const periodMonths = quarters[period];
+        const lastMonth = periodMonths[periodMonths.length - 1];
+        const monthIndex = months.indexOf(lastMonth);
+        const priorMonth = monthIndex > 0 ? months[monthIndex - 1] : null;
+        
+        // Get monthly data for trend analysis
+        const getMonthMetrics = (month) => {
+            if (!subData.monthly[month]) return null;
+            const d = subData.monthly[month];
+            const rev = Math.abs(d.income);
+            const gp = rev - d.cogs;
+            const opIncome = gp - d.expense;
+            return { revenue: rev, cogs: d.cogs, grossProfit: gp, opex: d.expense, opIncome, gpMargin: rev > 0 ? (gp/rev*100) : 0 };
+        };
+        
+        const currentMonthData = getMonthMetrics(lastMonth);
+        const priorMonthData = priorMonth ? getMonthMetrics(priorMonth) : null;
+        
+        // Format currency for display
+        const fmtCurr = (val) => {
+            const curr = currencyMap[subId] || currencyMap['consolidated'];
+            const absVal = Math.abs(val);
+            let formatted;
+            if (absVal >= 1000000) formatted = (val/1000000).toFixed(1) + 'M';
+            else if (absVal >= 1000) formatted = (val/1000).toFixed(0) + 'K';
+            else formatted = val.toFixed(0);
+            return curr.suffix ? formatted + ' ' + curr.symbol : curr.symbol + formatted;
+        };
+        
+        const fmtPct = (val) => (val >= 0 ? '+' : '') + val.toFixed(1) + '%';
+        
+        // 1. EXECUTIVE SUMMARY
+        const execSummary = { title: '📊 Executive Overview', type: 'executive-summary', points: [] };
+        
+        if (metrics.revenue > 0) {
+            execSummary.points.push(`Total revenue of <span class="metric">${fmtCurr(metrics.revenue)}</span> for the period with gross margin at <span class="metric">${metrics.gpMargin.toFixed(1)}%</span>.`);
+        } else {
+            execSummary.points.push(`This entity operates as a cost center with no direct revenue recognition.`);
+        }
+        
+        if (metrics.operatingIncome >= 0) {
+            execSummary.points.push(`Operating income positive at <span class="metric">${fmtCurr(metrics.operatingIncome)}</span>, representing a <span class="metric">${metrics.opMargin.toFixed(1)}%</span> operating margin.`);
+        } else {
+            execSummary.points.push(`Operating loss of <span class="metric">${fmtCurr(Math.abs(metrics.operatingIncome))}</span>. Cost management focus required.`);
+        }
+        
+        if (metrics.netIncome >= 0) {
+            execSummary.points.push(`Net income of <span class="metric">${fmtCurr(metrics.netIncome)}</span> delivered for the period.`);
+        } else {
+            execSummary.points.push(`Net loss of <span class="metric">${fmtCurr(Math.abs(metrics.netIncome))}</span> recorded for the period.`);
+        }
+        takeaways.push(execSummary);
+        
+        // 2. REVENUE ANALYSIS
+        if (metrics.revenue > 0) {
+            const revAnalysis = { title: '📈 Revenue Performance', type: currentMonthData && priorMonthData && currentMonthData.revenue > priorMonthData.revenue ? 'positive' : 'neutral', points: [] };
+            
+            if (currentMonthData && priorMonthData && priorMonthData.revenue > 0) {
+                const revChange = ((currentMonthData.revenue - priorMonthData.revenue) / priorMonthData.revenue) * 100;
+                if (Math.abs(revChange) > 1) {
+                    const direction = revChange > 0 ? 'increased' : 'decreased';
+                    const changeClass = revChange > 0 ? 'positive-change' : 'negative-change';
+                    revAnalysis.points.push(`${lastMonth} revenue ${direction} <span class="${changeClass}">${fmtPct(revChange)}</span> vs ${priorMonth} (${fmtCurr(priorMonthData.revenue)} → ${fmtCurr(currentMonthData.revenue)}).`);
+                    revAnalysis.type = revChange > 0 ? 'positive' : 'negative';
+                }
+            }
+            
+            // Revenue concentration insight
+            if (period === 'ytd' && subData.monthly) {
+                const monthlyRevs = months.map(m => subData.monthly[m] ? Math.abs(subData.monthly[m].income) : 0).filter(r => r > 0);
+                if (monthlyRevs.length > 0) {
+                    const maxRev = Math.max(...monthlyRevs);
+                    const avgRev = monthlyRevs.reduce((a,b) => a+b, 0) / monthlyRevs.length;
+                    const bestMonth = months.find(m => subData.monthly[m] && Math.abs(subData.monthly[m].income) === maxRev);
+                    revAnalysis.points.push(`Strongest month: <span class="metric">${bestMonth}</span> with ${fmtCurr(maxRev)} in revenue.`);
+                    
+                    if (maxRev > avgRev * 1.3) {
+                        revAnalysis.points.push(`Revenue shows seasonality - peak month ${((maxRev/avgRev - 1)*100).toFixed(0)}% above average.`);
+                    }
+                }
+            }
+            
+            if (revAnalysis.points.length > 0) takeaways.push(revAnalysis);
+        }
+        
+        // 3. MARGIN ANALYSIS
+        const marginAnalysis = { title: '💰 Margin & Profitability', type: 'neutral', points: [] };
+        
+        if (currentMonthData && priorMonthData) {
+            const gpMarginChange = currentMonthData.gpMargin - priorMonthData.gpMargin;
+            if (Math.abs(gpMarginChange) > 0.5) {
+                const direction = gpMarginChange > 0 ? 'improved' : 'declined';
+                const changeClass = gpMarginChange > 0 ? 'positive-change' : 'negative-change';
+                marginAnalysis.points.push(`Gross margin ${direction} by <span class="${changeClass}">${Math.abs(gpMarginChange).toFixed(1)}pp</span> in ${lastMonth} (${priorMonthData.gpMargin.toFixed(1)}% → ${currentMonthData.gpMargin.toFixed(1)}%).`);
+                marginAnalysis.type = gpMarginChange > 0 ? 'positive' : 'negative';
+            }
+        }
+        
+        if (metrics.gpMargin > 40) {
+            marginAnalysis.points.push(`Strong gross margin above 40% indicates healthy pricing power and cost control.`);
+        } else if (metrics.gpMargin > 25) {
+            marginAnalysis.points.push(`Gross margin in acceptable range. Monitor media costs for optimization opportunities.`);
+        } else if (metrics.gpMargin > 0) {
+            marginAnalysis.points.push(`Gross margin below 25% warrants review of pricing strategy and COGS structure.`);
+        }
+        
+        if (marginAnalysis.points.length > 0) takeaways.push(marginAnalysis);
+        
+        // 4. COST ANALYSIS
+        const costAnalysis = { title: '📉 Cost Management', type: 'neutral', points: [] };
+        
+        if (currentMonthData && priorMonthData && priorMonthData.opex > 0) {
+            const opexChange = ((currentMonthData.opex - priorMonthData.opex) / priorMonthData.opex) * 100;
+            if (Math.abs(opexChange) > 3) {
+                const direction = opexChange > 0 ? 'increased' : 'decreased';
+                const changeClass = opexChange < 0 ? 'positive-change' : 'negative-change';
+                costAnalysis.points.push(`Operating expenses ${direction} <span class="${changeClass}">${fmtPct(opexChange)}</span> vs prior month (${fmtCurr(priorMonthData.opex)} → ${fmtCurr(currentMonthData.opex)}).`);
+                costAnalysis.type = opexChange < 0 ? 'positive' : 'negative';
+            }
+        }
+        
+        // OpEx as % of revenue
+        if (metrics.revenue > 0) {
+            const opexPct = (metrics.opex / metrics.revenue) * 100;
+            if (opexPct > 50) {
+                costAnalysis.points.push(`Operating expenses at <span class="metric">${opexPct.toFixed(1)}%</span> of revenue - efficiency review recommended.`);
+                costAnalysis.type = 'negative';
+            } else if (opexPct < 30) {
+                costAnalysis.points.push(`Operating expenses well controlled at <span class="metric">${opexPct.toFixed(1)}%</span> of revenue.`);
+            }
+        }
+        
+        if (costAnalysis.points.length > 0) takeaways.push(costAnalysis);
+        
+        // 5. TREND & OUTLOOK (for YTD)
+        if (period === 'ytd' && subData.monthly) {
+            const trendAnalysis = { title: '🔮 Trends & Outlook', type: 'highlight', points: [] };
+            
+            // Calculate Q3 vs Q2 trend
+            const q2Data = getPeriodData(subData, 'q2');
+            const q3Data = getPeriodData(subData, 'q3');
+            const q2Rev = Math.abs(q2Data.income);
+            const q3Rev = Math.abs(q3Data.income);
+            
+            if (q2Rev > 0 && q3Rev > 0) {
+                const qChange = ((q3Rev - q2Rev) / q2Rev) * 100;
+                if (Math.abs(qChange) > 5) {
+                    const direction = qChange > 0 ? 'acceleration' : 'deceleration';
+                    trendAnalysis.points.push(`Q3 vs Q2 shows revenue ${direction} of <span class="metric">${fmtPct(qChange)}</span>.`);
+                }
+            }
+            
+            // Check last 3 months trend
+            const recentMonths = ['Aug', 'Sep', 'Oct'];
+            const recentRevs = recentMonths.map(m => subData.monthly[m] ? Math.abs(subData.monthly[m].income) : 0);
+            if (recentRevs[2] > recentRevs[1] && recentRevs[1] > recentRevs[0]) {
+                trendAnalysis.points.push(`Positive momentum: Revenue trending upward over the last 3 months.`);
+            } else if (recentRevs[2] < recentRevs[1] && recentRevs[1] < recentRevs[0]) {
+                trendAnalysis.points.push(`Revenue declining over the last 3 months - investigation warranted.`);
+            }
+            
+            if (trendAnalysis.points.length > 0) takeaways.push(trendAnalysis);
+        }
+        
+        // 6. ATTENTION ITEMS
+        const attentionItems = { title: '⚠️ Items Requiring Attention', type: 'negative', points: [] };
+        
+        if (metrics.netIncome < 0) {
+            attentionItems.points.push(`Entity operating at a loss - requires cost reduction or revenue growth initiatives.`);
+        }
+        
+        if (metrics.gpMargin < 20 && metrics.revenue > 0) {
+            attentionItems.points.push(`Low gross margin suggests pricing or media cost issues.`);
+        }
+        
+        if (currentMonthData && priorMonthData && priorMonthData.revenue > 0) {
+            const revDecline = ((currentMonthData.revenue - priorMonthData.revenue) / priorMonthData.revenue) * 100;
+            if (revDecline < -15) {
+                attentionItems.points.push(`Significant revenue decline of ${Math.abs(revDecline).toFixed(0)}% vs prior month requires immediate review.`);
+            }
+        }
+        
+        if (attentionItems.points.length > 0) takeaways.push(attentionItems);
+        
+        return takeaways;
+    }
+
+    function updateTakeaways(subData, subId, period) {
+        const container = document.getElementById('takeawaysContent');
+        const subName = subId === 'consolidated' ? 'Consolidated (All)' : subData.name;
+        const periodNames = { ytd: 'YTD (Jan-Oct)', q1: 'Q1', q2: 'Q2', q3: 'Q3', q4: 'Q4 QTD' };
+        
+        document.getElementById('takeawaysSubsidiary').textContent = subName;
+        document.getElementById('takeawaysPeriod').textContent = periodNames[period];
+        document.getElementById('takeawaysTimestamp').textContent = `Generated: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
+        
+        const takeaways = generateTakeaways(subData, subId, period);
+        
+        let html = '';
+        takeaways.forEach(section => {
+            const cardClass = section.type === 'executive-summary' ? 'executive-summary' : section.type;
+            html += `
+                <div class="takeaway-card ${cardClass}">
+                    <h4><span class="icon">${section.title.split(' ')[0]}</span> ${section.title.substring(section.title.indexOf(' ') + 1)}</h4>
+                    <ul>
+                        ${section.points.map(p => `<li>${p}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    }
+
     function updateDashboard() {
         const subId = document.getElementById('subsidiarySelect').value;
         const period = document.getElementById('periodSelect').value;
@@ -1284,6 +1585,7 @@
         updateKPIs(subData, period);
         updateCharts(subData);
         updatePnLTable(subData, period);
+        updateTakeaways(subData, subId, period);
     }
 
     // Initialize
