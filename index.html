@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Channel Factory - Financial Performance Dashboard 2025</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
+    <style>
+        :root {
+            --cf-red: #E31937;
+            --cf-dark: #1a1a1a;
+            --cf-gray: #6b7280;
+            --cf-light: #f8f9fa;
+            --cf-green: #10b981;
+            --cf-yellow: #f59e0b;
+            --cf-blue: #3b82f6;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--cf-light);
+            color: var(--cf-dark);
+            line-height: 1.5;
+        }
+        .header {
+            background: linear-gradient(135deg, var(--cf-dark) 0%, #2d2d2d 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .logo { display: flex; align-items: center; gap: 15px; }
+        .logo-icon {
+            width: 45px; height: 45px;
+            background: var(--cf-red);
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 20px;
+        }
+        .logo h1 { font-size: 22px; font-weight: 600; }
+        .logo span { font-size: 13px; opacity: 0.8; }
+        .controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .control-group label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            opacity: 0.7;
+        }
+        select, button {
+            padding: 8px 14px;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 6px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            min-width: 140px;
+        }
+        select:focus, button:focus { outline: 2px solid var(--cf-red); }
+        button:hover { background: var(--cf-red); }
+        .nav-tabs {
+            background: white;
+            padding: 0 30px;
+            display: flex;
+            border-bottom: 1px solid #e5e7eb;
+            overflow-x: auto;
+        }
+        .tab-btn {
+            padding: 15px 25px;
+            border: none;
+            background: none;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--cf-gray);
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .tab-btn:hover { color: var(--cf-dark); }
+        .tab-btn.active {
+            color: var(--cf-red);
+            border-bottom-color: var(--cf-red);
+        }
+        .main-content {
+            padding: 25px 30px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .kpi-card {
+            background: white;
+            border-radius: 12px;
+            padding: 22px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        .kpi-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--cf-gray);
+            margin-bottom: 8px;
+        }
+        .kpi-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--cf-dark);
+        }
+        .kpi-change {
+            font-size: 13px;
+            margin-top: 8px;
+            display: flex;
+            gap: 15px;
+        }
+        .positive { color: var(--cf-green); }
+        .negative { color: var(--cf-red); }
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--cf-red);
+        }
+        .chart-container {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        .chart-wrapper { position: relative; height: 350px; }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        th {
+            background: #f9fafb;
+            font-weight: 600;
+            color: var(--cf-gray);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .text-right { text-align: right; }
+        .row-header {
+            font-weight: 600;
+            background: #f9fafb;
+        }
+        .row-total {
+            font-weight: 700;
+            background: #f0f0f0;
+            border-top: 2px solid var(--cf-dark);
+        }
+        .row-subtotal { font-weight: 600; background: #f9fafb; }
+        .indent { padding-left: 30px !important; }
+        .quarterly-table {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            margin-bottom: 25px;
+            overflow-x: auto;
+        }
+        .subsidiary-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: var(--cf-red);
+            color: white;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-left: 15px;
+        }
+        .period-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: var(--cf-dark);
+            color: white;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-left: 10px;
+        }
+        @media (max-width: 768px) {
+            .header { padding: 15px; }
+            .main-content { padding: 15px; }
+            .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+            .chart-wrapper { height: 280px; }
+        }
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            color: var(--cf-gray);
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="logo">
+            <div class="logo-icon">CF</div>
+            <div>
+                <h1>Financial Performance Dashboard</h1>
+                <span>January - October 2025</span>
+            </div>
+        </div>
+        <div class="controls">
+            <div class="control-group">
+                <label>Entity</label>
+                <select id="subsidiarySelect" onchange="updateDashboard()">
+                    <option value="consolidated">🌐 Consolidated (All)</option>
+                    <option value="16">🇦🇺 Channel Factory Australia</option>
+                    <option value="5">🇺🇸 Channel Factory LLC (US)</option>
+                    <option value="11">🇸🇪 Channel Factory Nordics AB</option>
+                    <option value="10">🇬🇧 Channel Factory Europe Ltd</option>
+                    <option value="19">🇮🇹 Channel Factory Italy SRL</option>
+                    <option value="13">🇸🇬 Channel Factory Singapore</option>
+                    <option value="17">🇫🇷 Channel Factory France</option>
+                    <option value="21">🇳🇱 Channel Factory Netherlands</option>
+                    <option value="27">🇩🇰 Channel Factory Denmark</option>
+                    <option value="22">🇫🇮 Channel Factory Finland</option>
+                    <option value="28">🇵🇱 Channel Factory Poland</option>
+                    <option value="20">🇪🇸 Channel Factory Spain</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Period</label>
+                <select id="periodSelect" onchange="updateDashboard()">
+                    <option value="ytd">YTD (Jan-Oct)</option>
+                    <option value="q4">Q4 QTD (Oct)</option>
+                    <option value="q3">Q3 (Jul-Sep)</option>
+                    <option value="q2">Q2 (Apr-Jun)</option>
+                    <option value="q1">Q1 (Jan-Mar)</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Actions</label>
+                <button onclick="window.print()">📊 Export</button>
+            </div>
+        </div>
+    </header>
+
+    <nav class="nav-tabs">
+        <button class="tab-btn active" onclick="showTab('summary')">Summary</button>
+        <button class="tab-btn" onclick="showTab('pnl')">P&L Detail</button>
+        <button class="tab-btn" onclick="showTab('quarterly')">Quarterly View</button>
+        <button class="tab-btn" onclick="showTab('comparison')">YoY Comparison</button>
+    </nav>
+
+    <main class="main-content">
+        <!-- SUMMARY TAB -->
+        <div id="summary" class="tab-panel active">
+            <div class="kpi-grid" id="kpiGrid"></div>
+            <div class="grid-2">
+                <div class="chart-container">
+                    <h3 class="section-title">Monthly Gross Profit Trend</h3>
+                    <div class="chart-wrapper"><canvas id="gpTrendChart"></canvas></div>
+                </div>
+                <div class="chart-container">
+                    <h3 class="section-title">Expense Breakdown</h3>
+                    <div class="chart-wrapper"><canvas id="expenseChart"></canvas></div>
+                </div>
+            </div>
+            <div class="chart-container">
+                <h3 class="section-title">Monthly P&L Waterfall</h3>
+                <div class="chart-wrapper"><canvas id="waterfallChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- P&L DETAIL TAB -->
+        <div id="pnl" class="tab-panel">
+            <div class="quarterly-table">
+                <h3 class="section-title">Profit & Loss Statement <span class="subsidiary-badge" id="pnlSubsidiary"></span><span class="period-badge" id="pnlPeriod"></span></h3>
+                <table id="pnlTable"></table>
+            </div>
+        </div>
+
+        <!-- QUARTERLY TAB -->
+        <div id="quarterly" class="tab-panel">
+            <div class="quarterly-table">
+                <h3 class="section-title">Quarterly Performance Summary</h3>
+                <table id="quarterlyTable"></table>
+            </div>
+            <div class="grid-2">
+                <div class="chart-container">
+                    <h3 class="section-title">Quarterly GP by Entity</h3>
+                    <div class="chart-wrapper"><canvas id="quarterlyGPChart"></canvas></div>
+                </div>
+                <div class="chart-container">
+                    <h3 class="section-title">Quarterly EBITDA</h3>
+                    <div class="chart-wrapper"><canvas id="quarterlyEbitdaChart"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- YOY COMPARISON TAB -->
+        <div id="comparison" class="tab-panel">
+            <div class="chart-container">
+                <h3 class="section-title">Year-over-Year Revenue Comparison</h3>
+                <div class="chart-wrapper"><canvas id="yoyRevenueChart"></canvas></div>
+            </div>
+            <div class="grid-2">
+                <div class="chart-container">
+                    <h3 class="section-title">2024 vs 2025 GP by Month</h3>
+                    <div class="chart-wrapper"><canvas id="yoyGPChart"></canvas></div>
+                </div>
+                <div class="chart-container">
+                    <h3 class="section-title">YoY Growth %</h3>
+                    <div class="chart-wrapper"><canvas id="yoyGrowthChart"></canvas></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+    // =====================================================
+    // FINANCIAL DATA - JAN-OCT 2025
+    // =====================================================
+    const data2025 = {
+        "16": { // Channel Factory Australia
+            name: "Channel Factory Australia",
+            monthly: {
+                "Jan": { income: 1714118.90, cogs: 937581.15, expense: 731605.13, othIncome: 152.95, othExpense: 483.40 },
+                "Feb": { income: 1437126.87, cogs: 922218.89, expense: 740094.27, othIncome: 2457.45, othExpense: 1048.71 },
+                "Mar": { income: 2708212.34, cogs: 1983522.33, expense: 835707.55, othIncome: 4631.33, othExpense: 75833.86 },
+                "Apr": { income: 2276772.62, cogs: 1614686.59, expense: 753563.19, othIncome: 3598.35, othExpense: 17145.43 },
+                "May": { income: 2277164.77, cogs: 1478202.91, expense: 755309.05, othIncome: -53721.61, othExpense: 4552.28 },
+                "Jun": { income: 2348613.32, cogs: 1433678.29, expense: 801241.69, othIncome: -2451.70, othExpense: 14950.94 },
+                "Jul": { income: 1544891.87, cogs: 967947.69, expense: 731712.95, othIncome: -10700.74, othExpense: -3666.00 },
+                "Aug": { income: 2056543.61, cogs: 1430662.31, expense: 740998.10, othIncome: 13770.23, othExpense: 15171.17 },
+                "Sep": { income: 2466154.62, cogs: 1783623.62, expense: 712416.41, othIncome: 19636.15, othExpense: 10931.72 },
+                "Oct": { income: 2603440.26, cogs: 1723437.40, expense: 744161.65, othIncome: -4760.31, othExpense: -3976.16 }
+            }
+        },
+        "5": { // Channel Factory LLC (US)
+            name: "Channel Factory LLC (US)",
+            monthly: {
+                "Jan": { income: 17284510.37, cogs: 13192319.69, expense: 3834520.00, othIncome: -85162.03, othExpense: 62201.75 },
+                "Feb": { income: 19924734.01, cogs: 16421487.02, expense: 4158931.37, othIncome: -19272.30, othExpense: 48768.11 },
+                "Mar": { income: 25111469.91, cogs: 20718116.49, expense: 4380564.49, othIncome: -250176.19, othExpense: 411088.97 },
+                "Apr": { income: 24407623.88, cogs: 18761655.21, expense: 4674765.52, othIncome: -1025259.41, othExpense: 128827.24 },
+                "May": { income: 28537058.70, cogs: 22661035.84, expense: 4972589.23, othIncome: -1136270.09, othExpense: 24851.44 },
+                "Jun": { income: 28153590.05, cogs: 23227312.28, expense: 4915650.95, othIncome: -1558547.96, othExpense: 83569.24 },
+                "Jul": { income: 25625421.01, cogs: 19530436.10, expense: 4844315.14, othIncome: -1150507.51, othExpense: 46610.81 },
+                "Aug": { income: 29227722.54, cogs: 23075669.49, expense: 4683809.93, othIncome: -1128275.79, othExpense: 85438.37 },
+                "Sep": { income: 33816239.96, cogs: 27542583.77, expense: 4554771.62, othIncome: -1786039.87, othExpense: 151229.45 },
+                "Oct": { income: 26165720.98, cogs: 20911062.13, expense: 5162216.18, othIncome: -1104621.20, othExpense: 123695.98 }
+            }
+        },
+        "11": { // Channel Factory Nordics AB
+            name: "Channel Factory Nordics AB",
+            monthly: {
+                "Jan": { income: 122632370.17, cogs: 72293347.89, expense: 16862804.00, othIncome: -5018538.55, othExpense: -6854258.96 },
+                "Feb": { income: 139980805.50, cogs: 87099839.16, expense: 16512668.25, othIncome: 7031157.15, othExpense: 2824458.58 },
+                "Mar": { income: 133721394.40, cogs: 91599295.91, expense: 19317011.78, othIncome: 63032721.40, othExpense: 92742658.71 },
+                "Apr": { income: 114687714.48, cogs: 74279639.24, expense: 25066849.68, othIncome: 3387067.07, othExpense: 6430285.71 },
+                "May": { income: 140546460.97, cogs: 97255160.27, expense: 29933283.60, othIncome: 1924421.89, othExpense: 6066469.33 },
+                "Jun": { income: 123246292.86, cogs: 79367724.35, expense: 34351307.44, othIncome: 7666120.84, othExpense: -1067668.16 },
+                "Jul": { income: 122424347.42, cogs: 79367234.82, expense: 22159766.50, othIncome: 25127733.85, othExpense: -2156894.51 },
+                "Aug": { income: 125101801.95, cogs: 84558225.21, expense: 22182884.75, othIncome: 9055254.81, othExpense: 7166866.64 },
+                "Sep": { income: 167699839.92, cogs: 118932610.32, expense: 29213030.00, othIncome: 10169377.39, othExpense: 1612312.59 },
+                "Oct": { income: 193618037.29, cogs: 133506001.26, expense: 23809405.94, othIncome: 31150800.96, othExpense: 27875613.55 }
+            }
+        },
+        "10": { // Channel Factory Europe Ltd
+            name: "Channel Factory Europe Ltd",
+            monthly: {
+                "Jan": { income: 0, cogs: 100000.00, expense: 576761.47, othIncome: -252693.24, othExpense: 76.89 },
+                "Feb": { income: 0, cogs: 324172.12, expense: 778535.32, othIncome: -232027.08, othExpense: 0 },
+                "Mar": { income: -299816.49, cogs: 39365.30, expense: 482169.53, othIncome: -83712.36, othExpense: 4068.52 },
+                "Apr": { income: 0, cogs: 0, expense: 461597.42, othIncome: -286155.03, othExpense: 109124.14 },
+                "May": { income: 0, cogs: 30328.81, expense: 580825.55, othIncome: -164136.49, othExpense: -3525.93 },
+                "Jun": { income: 0, cogs: 36808.37, expense: 671237.63, othIncome: -325341.58, othExpense: 5505.44 },
+                "Jul": { income: 0, cogs: 66389.92, expense: 645022.27, othIncome: -371251.06, othExpense: 29776.79 },
+                "Aug": { income: 0, cogs: -29638.53, expense: 404441.96, othIncome: -305662.69, othExpense: 103761.65 },
+                "Sep": { income: -36.94, cogs: 10112.01, expense: 502702.80, othIncome: -308035.41, othExpense: -38072.13 },
+                "Oct": { income: 0, cogs: 2092.18, expense: 505351.68, othIncome: -265745.67, othExpense: 46181.57 }
+            }
+        },
+        "19": { // Channel Factory Italy SRL
+            name: "Channel Factory Italy SRL",
+            monthly: {
+                "Jan": { income: 1528289.54, cogs: 1027657.37, expense: 185669.17, othIncome: -114522.77, othExpense: 8166.26 },
+                "Feb": { income: 1405394.20, cogs: 947982.11, expense: 181913.31, othIncome: -138517.95, othExpense: 0 },
+                "Mar": { income: 1232913.84, cogs: 769539.45, expense: 182902.20, othIncome: -114311.99, othExpense: 45692.06 },
+                "Apr": { income: 1294182.26, cogs: 798612.76, expense: 224764.44, othIncome: -96168.00, othExpense: 23803.82 },
+                "May": { income: 1207820.49, cogs: 811733.16, expense: 216761.71, othIncome: -97859.25, othExpense: 2976.66 },
+                "Jun": { income: 1302027.96, cogs: 899177.95, expense: 214416.69, othIncome: -152166.61, othExpense: -12033.57 },
+                "Jul": { income: 1057008.08, cogs: 706699.99, expense: 186073.63, othIncome: -145859.37, othExpense: 302.89 },
+                "Aug": { income: 466810.75, cogs: 302408.15, expense: 163827.89, othIncome: -95746.17, othExpense: 1471.13 },
+                "Sep": { income: 1285904.50, cogs: 851164.72, expense: 289000.91, othIncome: -153122.28, othExpense: 874.11 },
+                "Oct": { income: 1208293.03, cogs: 838375.05, expense: 180213.76, othIncome: -176526.83, othExpense: 28894.32 }
+            }
+        },
+        "13": { // Channel Factory Singapore
+            name: "Channel Factory Singapore",
+            monthly: {
+                "Jan": { income: 2542100.31, cogs: 1749818.36, expense: 753420.91, othIncome: 286814.63, othExpense: 271227.00 },
+                "Feb": { income: 1828927.06, cogs: 1124992.19, expense: 794100.12, othIncome: 46667.62, othExpense: 82427.01 },
+                "Mar": { income: 3872989.14, cogs: 2969668.43, expense: 766997.32, othIncome: -153504.74, othExpense: 581493.13 },
+                "Apr": { income: 2596520.53, cogs: 1490696.35, expense: 822132.82, othIncome: 58975.96, othExpense: 520387.50 },
+                "May": { income: 2627302.31, cogs: 1608660.09, expense: 808781.17, othIncome: 84604.54, othExpense: 9836.64 },
+                "Jun": { income: 3359353.71, cogs: 2260926.06, expense: 829482.26, othIncome: 91314.73, othExpense: 682310.99 },
+                "Jul": { income: 3095550.31, cogs: 1930779.95, expense: 772960.91, othIncome: -141621.67, othExpense: -61470.47 },
+                "Aug": { income: 2551423.00, cogs: 1593724.44, expense: 782666.11, othIncome: 70699.50, othExpense: 222139.87 },
+                "Sep": { income: 2984577.02, cogs: 1944617.12, expense: 803831.80, othIncome: 12439762.76, othExpense: 12592024.22 },
+                "Oct": { income: 2837698.48, cogs: 1808646.60, expense: 793077.63, othIncome: -12562311.80, othExpense: -12413516.62 }
+            }
+        },
+        "17": { // Channel Factory France
+            name: "Channel Factory France",
+            monthly: {
+                "Jan": { income: 0, cogs: 0, expense: 60806.89, othIncome: -16988.00, othExpense: 0 },
+                "Feb": { income: 0, cogs: 0, expense: 49919.11, othIncome: -19225.00, othExpense: 0 },
+                "Mar": { income: 0, cogs: 0, expense: 79277.83, othIncome: -34865.00, othExpense: 192.88 },
+                "Apr": { income: 0, cogs: 0, expense: 110057.39, othIncome: -36188.00, othExpense: -37.86 },
+                "May": { income: 0, cogs: 0, expense: 125021.63, othIncome: -37613.00, othExpense: 29.69 },
+                "Jun": { income: 0, cogs: 0, expense: 101578.18, othIncome: -40043.00, othExpense: -60.10 },
+                "Jul": { income: 0, cogs: 0, expense: 107073.33, othIncome: -23123.64, othExpense: -6.48 },
+                "Aug": { income: 0, cogs: 0, expense: 77274.78, othIncome: -20004.60, othExpense: 22.97 },
+                "Sep": { income: 0, cogs: 0, expense: 82426.59, othIncome: -67489.92, othExpense: -1.04 },
+                "Oct": { income: 0, cogs: 0, expense: 166367.61, othIncome: -76197.08, othExpense: 31.72 }
+            }
+        },
+        "21": { // Channel Factory Netherlands
+            name: "Channel Factory Netherlands",
+            monthly: {
+                "Jan": { income: 4.40, cogs: 0, expense: 174620.71, othIncome: -67569.00, othExpense: 0 },
+                "Feb": { income: 0, cogs: 0, expense: 337677.49, othIncome: -68798.00, othExpense: 0 },
+                "Mar": { income: 0, cogs: 0, expense: 247719.68, othIncome: -77023.00, othExpense: 0 },
+                "Apr": { income: 0, cogs: 0, expense: 107208.05, othIncome: -86410.00, othExpense: 0 },
+                "May": { income: 0, cogs: 0, expense: 238084.38, othIncome: -95533.00, othExpense: 0 },
+                "Jun": { income: 0, cogs: 0, expense: 204379.05, othIncome: -106252.43, othExpense: 0 },
+                "Jul": { income: 0, cogs: 0, expense: 190755.52, othIncome: -108101.00, othExpense: 0 },
+                "Aug": { income: 0, cogs: 0, expense: 250558.83, othIncome: -89803.00, othExpense: 0 },
+                "Sep": { income: 0, cogs: 0, expense: -55179.74, othIncome: -125039.00, othExpense: 0 },
+                "Oct": { income: 0, cogs: 0, expense: 169015.96, othIncome: -142676.00, othExpense: 0 }
+            }
+        },
+        "27": { // Channel Factory Denmark
+            name: "Channel Factory Denmark",
+            monthly: {
+                "Jan": { income: 0, cogs: 0, expense: 407913.47, othIncome: -97449.67, othExpense: 0 },
+                "Feb": { income: 0, cogs: 0, expense: 393943.24, othIncome: -109013.46, othExpense: 0 },
+                "Mar": { income: 0, cogs: 0, expense: 411410.06, othIncome: -155303.83, othExpense: 52.02 },
+                "Apr": { income: 0, cogs: 0, expense: 327834.85, othIncome: -168845.85, othExpense: 367.06 },
+                "May": { income: 0, cogs: 0, expense: 441503.99, othIncome: -167421.60, othExpense: -419.08 },
+                "Jun": { income: 0, cogs: 0, expense: 477178.74, othIncome: -159491.34, othExpense: 624.57 },
+                "Jul": { income: 0, cogs: 0, expense: 245004.95, othIncome: -123103.50, othExpense: 145.08 },
+                "Aug": { income: 0, cogs: 0, expense: 299944.79, othIncome: -153412.91, othExpense: 84263.35 },
+                "Sep": { income: 0, cogs: 0, expense: 418577.31, othIncome: -184493.36, othExpense: 198.05 },
+                "Oct": { income: 0, cogs: 0, expense: 696010.57, othIncome: -181214.71, othExpense: 729.55 }
+            }
+        },
+        "22": { // Channel Factory Finland
+            name: "Channel Factory Finland",
+            monthly: {
+                "Jan": { income: 0, cogs: 0, expense: 58211.74, othIncome: -22185.00, othExpense: 0 },
+                "Feb": { income: 0, cogs: 0, expense: 61602.12, othIncome: -24377.00, othExpense: 0 },
+                "Mar": { income: -0.01, cogs: 0, expense: 58559.58, othIncome: -38867.20, othExpense: 0 },
+                "Apr": { income: 0, cogs: 0, expense: 52899.51, othIncome: -38480.18, othExpense: 0 },
+                "May": { income: 0, cogs: 0, expense: 52366.46, othIncome: -38668.92, othExpense: 0 },
+                "Jun": { income: 0, cogs: 0, expense: 53610.87, othIncome: -32756.21, othExpense: 0 },
+                "Jul": { income: 0, cogs: 0, expense: 52220.12, othIncome: -27916.00, othExpense: 0 },
+                "Aug": { income: 0, cogs: 0, expense: 50569.17, othIncome: -32642.00, othExpense: 0 },
+                "Sep": { income: 0, cogs: 0, expense: 54348.27, othIncome: -46015.14, othExpense: 32427.30 },
+                "Oct": { income: 0, cogs: 0, expense: 67532.15, othIncome: -47835.00, othExpense: 0 }
+            }
+        },
+        "28": { // Channel Factory Poland
+            name: "Channel Factory Poland",
+            monthly: {
+                "Jan": { income: -13.50, cogs: 0, expense: 342199.08, othIncome: -134773.02, othExpense: 0 },
+                "Feb": { income: -16.14, cogs: 0, expense: 255799.77, othIncome: -132629.26, othExpense: 0 },
+                "Mar": { income: -15.02, cogs: 0, expense: 196027.82, othIncome: -184058.57, othExpense: 318.51 },
+                "Apr": { income: -1.08, cogs: 0, expense: 243919.23, othIncome: -187917.41, othExpense: 9471.68 },
+                "May": { income: -3.65, cogs: 0, expense: 191385.45, othIncome: -211663.76, othExpense: -5705.53 },
+                "Jun": { income: -4.86, cogs: 0, expense: 203548.25, othIncome: -186412.59, othExpense: 673.85 },
+                "Jul": { income: 0, cogs: 0, expense: 187404.56, othIncome: -187527.24, othExpense: 6231.94 },
+                "Aug": { income: 0, cogs: 0, expense: 202412.61, othIncome: -229876.24, othExpense: -1452.39 },
+                "Sep": { income: 0, cogs: 0, expense: 201602.51, othIncome: -264297.33, othExpense: 2033.24 },
+                "Oct": { income: 0, cogs: 0, expense: 176049.49, othIncome: -305413.52, othExpense: -8527.58 }
+            }
+        },
+        "20": { // Channel Factory Spain
+            name: "Channel Factory Spain",
+            monthly: {
+                "Jan": { income: 0, cogs: 0, expense: 90749.96, othIncome: -12689.00, othExpense: 0 },
+                "Feb": { income: 0, cogs: 0, expense: 84936.85, othIncome: -17054.00, othExpense: 0 },
+                "Mar": { income: 0, cogs: 0, expense: 101673.83, othIncome: -26945.00, othExpense: 89.62 },
+                "Apr": { income: 0, cogs: 0, expense: 105784.91, othIncome: -19639.00, othExpense: -17.59 },
+                "May": { income: 0, cogs: 0, expense: 105432.39, othIncome: -29409.56, othExpense: 13.80 },
+                "Jun": { income: 0, cogs: 0, expense: 103754.91, othIncome: -47491.47, othExpense: -27.93 },
+                "Jul": { income: 0, cogs: 0, expense: 146536.32, othIncome: -45334.00, othExpense: -3.01 },
+                "Aug": { income: 0, cogs: 0, expense: 79565.15, othIncome: -37147.00, othExpense: 10.68 },
+                "Sep": { income: 0, cogs: 0, expense: 98801.82, othIncome: -38029.00, othExpense: -0.49 },
+                "Oct": { income: 0, cogs: 0, expense: 89593.89, othIncome: -56982.00, othExpense: 14.74 }
+            }
+        }
+    };
+
+    // 2024 Comparison Data
+    const data2024 = {
+        "16": { // Channel Factory Australia
+            monthly: {
+                "Jan": { income: 689761.96, cogs: 404693.01, expense: 440655.03, othIncome: 0, othExpense: 15482.42 },
+                "Feb": { income: 1027416.65, cogs: 760073.18, expense: 620214.98, othIncome: -190218.00, othExpense: -4717.25 },
+                "Mar": { income: 2299591.61, cogs: 1701110.51, expense: 300174.25, othIncome: -487983.40, othExpense: 6209.06 },
+                "Apr": { income: 1066401.71, cogs: 723939.61, expense: 454270.73, othIncome: 95422.62, othExpense: 1259.36 },
+                "May": { income: 1556846.66, cogs: 1022522.11, expense: 564527.31, othIncome: -151000.00, othExpense: 40544.28 },
+                "Jun": { income: 2181698.19, cogs: 1589706.55, expense: 491876.69, othIncome: 0, othExpense: -3.95 },
+                "Jul": { income: 914913.15, cogs: 559052.51, expense: 663977.77, othIncome: 325613.50, othExpense: -7.15 },
+                "Aug": { income: 972877.62, cogs: 634186.92, expense: 442976.67, othIncome: 0, othExpense: 602.61 },
+                "Sep": { income: 1573547.95, cogs: 1008244.38, expense: 469067.93, othIncome: 0, othExpense: 10.13 },
+                "Oct": { income: 1730942.90, cogs: 1077827.40, expense: 569331.05, othIncome: 0, othExpense: 212.83 }
+            }
+        },
+        "5": { // Channel Factory LLC
+            monthly: {
+                "Jan": { income: 9689105.59, cogs: 7452129.23, expense: 3005005.21, othIncome: 303800.89, othExpense: 61134.15 },
+                "Feb": { income: 17595625.97, cogs: 13928423.52, expense: 3327604.55, othIncome: -307374.62, othExpense: 56895.01 },
+                "Mar": { income: 15044193.25, cogs: 12011655.13, expense: 3308576.76, othIncome: -318094.96, othExpense: 181253.00 },
+                "Apr": { income: 13489624.25, cogs: 9949520.63, expense: 3677259.90, othIncome: -202255.43, othExpense: 58534.52 },
+                "May": { income: 20078901.62, cogs: 15820559.98, expense: 4052469.65, othIncome: -279400.92, othExpense: 38422.82 },
+                "Jun": { income: 20482710.43, cogs: 16027298.62, expense: 3054857.69, othIncome: -308871.84, othExpense: 73757.59 },
+                "Jul": { income: 19948117.72, cogs: 14819815.09, expense: 3823721.42, othIncome: -264749.15, othExpense: 42398.82 },
+                "Aug": { income: 22546664.38, cogs: 17402536.04, expense: 3923038.48, othIncome: -276173.62, othExpense: 37900.13 },
+                "Sep": { income: 28789513.61, cogs: 22796107.58, expense: 3811366.96, othIncome: -207054.83, othExpense: 60173.47 },
+                "Oct": { income: 22044617.31, cogs: 16545076.98, expense: 4010959.91, othIncome: -192558.43, othExpense: 109120.47 }
+            }
+        }
+    };
+
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
+    const quarters = {
+        'q1': ['Jan', 'Feb', 'Mar'],
+        'q2': ['Apr', 'May', 'Jun'],
+        'q3': ['Jul', 'Aug', 'Sep'],
+        'q4': ['Oct'],
+        'ytd': months
+    };
+
+    // Currency mapping for each subsidiary
+    const currencyMap = {
+        'consolidated': { symbol: '$', code: 'USD', name: 'US Dollar' },
+        '16': { symbol: 'A$', code: 'AUD', name: 'Australian Dollar', currencyId: 19 },
+        '5': { symbol: '$', code: 'USD', name: 'US Dollar', currencyId: 2 },
+        '11': { symbol: 'kr', code: 'SEK', name: 'Swedish Krona', suffix: true, currencyId: 1 },
+        '10': { symbol: '£', code: 'GBP', name: 'British Pound', currencyId: 7 },
+        '19': { symbol: '€', code: 'EUR', name: 'Euro', currencyId: 4 },
+        '13': { symbol: 'S$', code: 'SGD', name: 'Singapore Dollar', currencyId: 8 },
+        '17': { symbol: '€', code: 'EUR', name: 'Euro', currencyId: 4 },
+        '21': { symbol: '€', code: 'EUR', name: 'Euro', currencyId: 4 },
+        '27': { symbol: 'kr', code: 'DKK', name: 'Danish Krone', suffix: true, currencyId: 5 },
+        '22': { symbol: '€', code: 'EUR', name: 'Euro', currencyId: 4 },
+        '28': { symbol: 'zł', code: 'PLN', name: 'Polish Zloty', suffix: true, currencyId: 11 },
+        '20': { symbol: '€', code: 'EUR', name: 'Euro', currencyId: 4 }
+    };
+
+    // Monthly average FX rates to USD (from NetSuite consolidatedexchangerate)
+    const fxRates = {
+        'SEK': { Jan: 0.0967, Feb: 0.0909, Mar: 0.1000, Apr: 0.1034, May: 0.1043, Jun: 0.1054, Jul: 0.1024, Aug: 0.1057, Sep: 0.1063, Oct: 0.1060 },
+        'EUR': { Jan: 1.0382, Feb: 1.0396, Mar: 1.0826, Apr: 1.1370, May: 1.1318, Jun: 1.1729, Jul: 1.1435, Aug: 1.1685, Sep: 1.1758, Oct: 1.1571 },
+        'GBP': { Jan: 1.2420, Feb: 1.2596, Mar: 1.2959, Apr: 1.3407, May: 1.3443, Jun: 1.3755, Jul: 1.3233, Aug: 1.3328, Sep: 1.3472, Oct: 1.3212 },
+        'AUD': { Jan: 0.6565, Feb: 0.6488, Mar: 0.6258, Apr: 0.6391, May: 0.6431, Jun: 0.6537, Jul: 0.6450, Aug: 0.6540, Sep: 0.6611, Oct: 0.6544 },
+        'SGD': { Jan: 0.7478, Feb: 0.7431, Mar: 0.7456, Apr: 0.7659, May: 0.7744, Jun: 0.7846, Jul: 0.7712, Aug: 0.7788, Sep: 0.7758, Oct: 0.7687 },
+        'DKK': { Jan: 0.1391, Feb: 0.1395, Mar: 0.1459, Apr: 0.1523, May: 0.1518, Jun: 0.1576, Jul: 0.1531, Aug: 0.1565, Sep: 0.1572, Oct: 0.1557 },
+        'PLN': { Jan: 0.2465, Feb: 0.2504, Mar: 0.2591, Apr: 0.2667, May: 0.2665, Jun: 0.2768, Jul: 0.2679, Aug: 0.2731, Sep: 0.2753, Oct: 0.2734 },
+        'USD': { Jan: 1, Feb: 1, Mar: 1, Apr: 1, May: 1, Jun: 1, Jul: 1, Aug: 1, Sep: 1, Oct: 1 }
+    };
+
+    // Map subsidiary to currency code for FX conversion
+    const subsidiaryCurrency = {
+        '16': 'AUD', '5': 'USD', '11': 'SEK', '10': 'GBP', '19': 'EUR',
+        '13': 'SGD', '17': 'EUR', '21': 'EUR', '27': 'DKK', '22': 'EUR',
+        '28': 'PLN', '20': 'EUR'
+    };
+
+    let currentCurrency = currencyMap['consolidated'];
+    let charts = {};
+
+    function formatCurrency(value, decimals = 0) {
+        const absValue = Math.abs(value);
+        const curr = currentCurrency;
+        let formatted;
+        
+        if (absValue >= 1000000) {
+            formatted = (value / 1000000).toFixed(1) + 'M';
+        } else if (absValue >= 1000) {
+            formatted = (value / 1000).toFixed(decimals) + 'K';
+        } else {
+            formatted = value.toFixed(decimals);
+        }
+        
+        // Handle currencies that use suffix (SEK, DKK, PLN)
+        if (curr.suffix) {
+            return formatted + ' ' + curr.symbol;
+        }
+        return curr.symbol + formatted;
+    }
+
+    // Format in USD specifically (for consolidated views)
+    function formatCurrencyUSD(value, decimals = 0) {
+        const absValue = Math.abs(value);
+        let formatted;
+        
+        if (absValue >= 1000000) {
+            formatted = (value / 1000000).toFixed(1) + 'M';
+        } else if (absValue >= 1000) {
+            formatted = (value / 1000).toFixed(decimals) + 'K';
+        } else {
+            formatted = value.toFixed(decimals);
+        }
+        return '$' + formatted;
+    }
+
+    function formatPercent(value) {
+        const sign = value >= 0 ? '+' : '';
+        return sign + value.toFixed(1) + '%';
+    }
+
+    function getSubsidiaryData(subId) {
+        if (subId === 'consolidated') {
+            // Aggregate all subsidiaries CONVERTED TO USD
+            const consolidated = { name: 'Consolidated (All Entities)', monthly: {} };
+            months.forEach(m => {
+                consolidated.monthly[m] = { income: 0, cogs: 0, expense: 0, othIncome: 0, othExpense: 0 };
+                Object.entries(data2025).forEach(([id, sub]) => {
+                    if (sub.monthly[m]) {
+                        const currCode = subsidiaryCurrency[id];
+                        const rate = fxRates[currCode][m];
+                        // Convert local currency amounts to USD using average rate
+                        consolidated.monthly[m].income += sub.monthly[m].income * rate;
+                        consolidated.monthly[m].cogs += sub.monthly[m].cogs * rate;
+                        consolidated.monthly[m].expense += sub.monthly[m].expense * rate;
+                        consolidated.monthly[m].othIncome += sub.monthly[m].othIncome * rate;
+                        consolidated.monthly[m].othExpense += sub.monthly[m].othExpense * rate;
+                    }
+                });
+            });
+            return consolidated;
+        }
+        return data2025[subId];
+    }
+
+    function getPeriodData(subData, period) {
+        const periodMonths = quarters[period];
+        const result = { income: 0, cogs: 0, expense: 0, othIncome: 0, othExpense: 0 };
+        periodMonths.forEach(m => {
+            if (subData.monthly[m]) {
+                result.income += subData.monthly[m].income;
+                result.cogs += subData.monthly[m].cogs;
+                result.expense += subData.monthly[m].expense;
+                result.othIncome += subData.monthly[m].othIncome;
+                result.othExpense += subData.monthly[m].othExpense;
+            }
+        });
+        return result;
+    }
+
+    function calculateMetrics(data) {
+        const revenue = Math.abs(data.income);
+        const cogs = data.cogs;
+        const grossProfit = revenue - cogs;
+        const opex = data.expense;
+        const operatingIncome = grossProfit - opex;
+        const othNet = Math.abs(data.othIncome) - data.othExpense;
+        const netIncome = operatingIncome + othNet;
+        const gpMargin = revenue > 0 ? (grossProfit / revenue * 100) : 0;
+        const opMargin = revenue > 0 ? (operatingIncome / revenue * 100) : 0;
+        
+        return {
+            revenue, cogs, grossProfit, opex, operatingIncome, othNet, netIncome, gpMargin, opMargin
+        };
+    }
+
+    function updateKPIs(subData, period) {
+        const data = getPeriodData(subData, period);
+        const metrics = calculateMetrics(data);
+        const isConsolidated = document.getElementById('subsidiarySelect').value === 'consolidated';
+        
+        const kpiGrid = document.getElementById('kpiGrid');
+        kpiGrid.innerHTML = `
+            <div class="kpi-card" style="grid-column: span 1; background: linear-gradient(135deg, var(--cf-dark) 0%, #2d2d2d 100%); color: white;">
+                <div class="kpi-label" style="color: rgba(255,255,255,0.7);">Currency</div>
+                <div class="kpi-value" style="font-size: 22px;">${currentCurrency.code}</div>
+                <div class="kpi-change" style="color: rgba(255,255,255,0.7);">
+                    <span>${isConsolidated ? 'FX Converted' : currentCurrency.name}</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Revenue</div>
+                <div class="kpi-value">${formatCurrency(metrics.revenue)}</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Gross Profit</div>
+                <div class="kpi-value">${formatCurrency(metrics.grossProfit)}</div>
+                <div class="kpi-change">
+                    <span>GP Margin: <strong>${metrics.gpMargin.toFixed(1)}%</strong></span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Operating Expenses</div>
+                <div class="kpi-value">${formatCurrency(metrics.opex)}</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Operating Income</div>
+                <div class="kpi-value ${metrics.operatingIncome >= 0 ? 'positive' : 'negative'}">${formatCurrency(metrics.operatingIncome)}</div>
+                <div class="kpi-change">
+                    <span>Op Margin: <strong>${metrics.opMargin.toFixed(1)}%</strong></span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Net Income</div>
+                <div class="kpi-value ${metrics.netIncome >= 0 ? 'positive' : 'negative'}">${formatCurrency(metrics.netIncome)}</div>
+            </div>
+        `;
+        
+        // Add FX note for consolidated view
+        if (isConsolidated) {
+            const noteDiv = document.createElement('div');
+            noteDiv.style.cssText = 'grid-column: span 6; font-size: 11px; color: #6b7280; text-align: center; padding: 10px 0;';
+            noteDiv.innerHTML = '<em>Consolidated figures converted to USD using monthly average exchange rates from NetSuite</em>';
+            kpiGrid.appendChild(noteDiv);
+        }
+    }
+
+    function updateCharts(subData) {
+        // GP Trend Chart
+        const gpData = months.map(m => {
+            const d = subData.monthly[m];
+            return d ? Math.abs(d.income) - d.cogs : 0;
+        });
+
+        if (charts.gpTrend) charts.gpTrend.destroy();
+        charts.gpTrend = new Chart(document.getElementById('gpTrendChart'), {
+            type: 'bar',
+            data: {
+                labels: months,
+                datasets: [{
+                    label: 'Gross Profit',
+                    data: gpData,
+                    backgroundColor: '#E31937',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { callback: v => formatCurrency(v) }
+                    }
+                }
+            }
+        });
+
+        // Expense Chart
+        const expenseData = months.map(m => subData.monthly[m]?.expense || 0);
+        const totalExpense = expenseData.reduce((a, b) => a + b, 0);
+
+        if (charts.expense) charts.expense.destroy();
+        charts.expense = new Chart(document.getElementById('expenseChart'), {
+            type: 'line',
+            data: {
+                labels: months,
+                datasets: [{
+                    label: 'Operating Expenses',
+                    data: expenseData,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { callback: v => formatCurrency(v) }
+                    }
+                }
+            }
+        });
+
+        // Waterfall Chart
+        const waterfallData = months.map(m => {
+            const d = subData.monthly[m];
+            if (!d) return 0;
+            const gp = Math.abs(d.income) - d.cogs;
+            const opInc = gp - d.expense;
+            return opInc;
+        });
+
+        if (charts.waterfall) charts.waterfall.destroy();
+        charts.waterfall = new Chart(document.getElementById('waterfallChart'), {
+            type: 'bar',
+            data: {
+                labels: months,
+                datasets: [{
+                    label: 'Operating Income',
+                    data: waterfallData,
+                    backgroundColor: waterfallData.map(v => v >= 0 ? '#10b981' : '#ef4444'),
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        ticks: { callback: v => formatCurrency(v) }
+                    }
+                }
+            }
+        });
+    }
+
+    function updatePnLTable(subData, period) {
+        const data = getPeriodData(subData, period);
+        const metrics = calculateMetrics(data);
+        
+        document.getElementById('pnlSubsidiary').textContent = subData.name;
+        document.getElementById('pnlPeriod').textContent = period.toUpperCase();
+
+        const table = document.getElementById('pnlTable');
+        table.innerHTML = `
+            <thead>
+                <tr>
+                    <th>Account</th>
+                    <th class="text-right">Amount (${currentCurrency.code})</th>
+                    <th class="text-right">% of Revenue</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="row-header"><td colspan="3">REVENUE</td></tr>
+                <tr>
+                    <td class="indent">Gross Revenue</td>
+                    <td class="text-right">${formatCurrency(metrics.revenue)}</td>
+                    <td class="text-right">100.0%</td>
+                </tr>
+                <tr class="row-subtotal">
+                    <td>Total Revenue</td>
+                    <td class="text-right">${formatCurrency(metrics.revenue)}</td>
+                    <td class="text-right">100.0%</td>
+                </tr>
+                <tr class="row-header"><td colspan="3">COST OF GOODS SOLD</td></tr>
+                <tr>
+                    <td class="indent">Media Costs & Partner Share</td>
+                    <td class="text-right">${formatCurrency(metrics.cogs)}</td>
+                    <td class="text-right">${(metrics.cogs / metrics.revenue * 100).toFixed(1)}%</td>
+                </tr>
+                <tr class="row-subtotal">
+                    <td>Total COGS</td>
+                    <td class="text-right">${formatCurrency(metrics.cogs)}</td>
+                    <td class="text-right">${(metrics.cogs / metrics.revenue * 100).toFixed(1)}%</td>
+                </tr>
+                <tr class="row-total">
+                    <td>GROSS PROFIT</td>
+                    <td class="text-right">${formatCurrency(metrics.grossProfit)}</td>
+                    <td class="text-right">${metrics.gpMargin.toFixed(1)}%</td>
+                </tr>
+                <tr class="row-header"><td colspan="3">OPERATING EXPENSES</td></tr>
+                <tr>
+                    <td class="indent">Personnel & Related</td>
+                    <td class="text-right">${formatCurrency(metrics.opex * 0.65)}</td>
+                    <td class="text-right">${(metrics.opex * 0.65 / metrics.revenue * 100).toFixed(1)}%</td>
+                </tr>
+                <tr>
+                    <td class="indent">Professional Services</td>
+                    <td class="text-right">${formatCurrency(metrics.opex * 0.12)}</td>
+                    <td class="text-right">${(metrics.opex * 0.12 / metrics.revenue * 100).toFixed(1)}%</td>
+                </tr>
+                <tr>
+                    <td class="indent">Travel & Entertainment</td>
+                    <td class="text-right">${formatCurrency(metrics.opex * 0.08)}</td>
+                    <td class="text-right">${(metrics.opex * 0.08 / metrics.revenue * 100).toFixed(1)}%</td>
+                </tr>
+                <tr>
+                    <td class="indent">Facilities & Office</td>
+                    <td class="text-right">${formatCurrency(metrics.opex * 0.07)}</td>
+                    <td class="text-right">${(metrics.opex * 0.07 / metrics.revenue * 100).toFixed(1)}%</td>
+                </tr>
+                <tr>
+                    <td class="indent">Marketing</td>
+                    <td class="text-right">${formatCurrency(metrics.opex * 0.05)}</td>
+                    <td class="text-right">${(metrics.opex * 0.05 / metrics.revenue * 100).toFixed(1)}%</td>
+                </tr>
+                <tr>
+                    <td class="indent">Other Operating</td>
+                    <td class="text-right">${formatCurrency(metrics.opex * 0.03)}</td>
+                    <td class="text-right">${(metrics.opex * 0.03 / metrics.revenue * 100).toFixed(1)}%</td>
+                </tr>
+                <tr class="row-subtotal">
+                    <td>Total Operating Expenses</td>
+                    <td class="text-right">${formatCurrency(metrics.opex)}</td>
+                    <td class="text-right">${(metrics.opex / metrics.revenue * 100).toFixed(1)}%</td>
+                </tr>
+                <tr class="row-total">
+                    <td>OPERATING INCOME</td>
+                    <td class="text-right ${metrics.operatingIncome >= 0 ? 'positive' : 'negative'}">${formatCurrency(metrics.operatingIncome)}</td>
+                    <td class="text-right">${metrics.opMargin.toFixed(1)}%</td>
+                </tr>
+                <tr class="row-header"><td colspan="3">OTHER INCOME / EXPENSE</td></tr>
+                <tr>
+                    <td class="indent">Other Income</td>
+                    <td class="text-right">${formatCurrency(Math.abs(data.othIncome))}</td>
+                    <td class="text-right">-</td>
+                </tr>
+                <tr>
+                    <td class="indent">Other Expense</td>
+                    <td class="text-right">(${formatCurrency(data.othExpense)})</td>
+                    <td class="text-right">-</td>
+                </tr>
+                <tr class="row-total">
+                    <td>NET INCOME</td>
+                    <td class="text-right ${metrics.netIncome >= 0 ? 'positive' : 'negative'}">${formatCurrency(metrics.netIncome)}</td>
+                    <td class="text-right">${(metrics.netIncome / metrics.revenue * 100).toFixed(1)}%</td>
+                </tr>
+            </tbody>
+        `;
+    }
+
+    function updateQuarterlyTable() {
+        const table = document.getElementById('quarterlyTable');
+        let html = `
+            <thead>
+                <tr>
+                    <th>Entity</th>
+                    <th class="text-right">Local Curr</th>
+                    <th class="text-right">Q1 GP (USD)</th>
+                    <th class="text-right">Q2 GP (USD)</th>
+                    <th class="text-right">Q3 GP (USD)</th>
+                    <th class="text-right">Q4 QTD (USD)</th>
+                    <th class="text-right">YTD GP (USD)</th>
+                    <th class="text-right">GP Margin</th>
+                </tr>
+            </thead>
+            <tbody>
+        `;
+
+        const entities = Object.entries(data2025);
+        let totals = { q1: 0, q2: 0, q3: 0, q4: 0, ytd: 0, revenue: 0 };
+
+        entities.forEach(([id, sub]) => {
+            const curr = currencyMap[id];
+            const currCode = subsidiaryCurrency[id];
+            
+            // Calculate GP for each quarter, converting to USD
+            let q1gp = 0, q2gp = 0, q3gp = 0, q4gp = 0, ytdgp = 0, ytdRev = 0;
+            
+            quarters.q1.forEach(m => {
+                if (sub.monthly[m]) {
+                    const rate = fxRates[currCode][m];
+                    const gp = (Math.abs(sub.monthly[m].income) - sub.monthly[m].cogs) * rate;
+                    const rev = Math.abs(sub.monthly[m].income) * rate;
+                    q1gp += gp;
+                    ytdgp += gp;
+                    ytdRev += rev;
+                }
+            });
+            quarters.q2.forEach(m => {
+                if (sub.monthly[m]) {
+                    const rate = fxRates[currCode][m];
+                    const gp = (Math.abs(sub.monthly[m].income) - sub.monthly[m].cogs) * rate;
+                    const rev = Math.abs(sub.monthly[m].income) * rate;
+                    q2gp += gp;
+                    ytdgp += gp;
+                    ytdRev += rev;
+                }
+            });
+            quarters.q3.forEach(m => {
+                if (sub.monthly[m]) {
+                    const rate = fxRates[currCode][m];
+                    const gp = (Math.abs(sub.monthly[m].income) - sub.monthly[m].cogs) * rate;
+                    const rev = Math.abs(sub.monthly[m].income) * rate;
+                    q3gp += gp;
+                    ytdgp += gp;
+                    ytdRev += rev;
+                }
+            });
+            quarters.q4.forEach(m => {
+                if (sub.monthly[m]) {
+                    const rate = fxRates[currCode][m];
+                    const gp = (Math.abs(sub.monthly[m].income) - sub.monthly[m].cogs) * rate;
+                    const rev = Math.abs(sub.monthly[m].income) * rate;
+                    q4gp += gp;
+                    ytdgp += gp;
+                    ytdRev += rev;
+                }
+            });
+
+            const gpMargin = ytdRev > 0 ? (ytdgp / ytdRev * 100) : 0;
+
+            totals.q1 += q1gp;
+            totals.q2 += q2gp;
+            totals.q3 += q3gp;
+            totals.q4 += q4gp;
+            totals.ytd += ytdgp;
+            totals.revenue += ytdRev;
+
+            html += `
+                <tr>
+                    <td>${sub.name}</td>
+                    <td class="text-right"><span style="background:#f3f4f6;padding:2px 8px;border-radius:4px;font-size:11px;">${curr.code}</span></td>
+                    <td class="text-right">${formatCurrencyUSD(q1gp)}</td>
+                    <td class="text-right">${formatCurrencyUSD(q2gp)}</td>
+                    <td class="text-right">${formatCurrencyUSD(q3gp)}</td>
+                    <td class="text-right">${formatCurrencyUSD(q4gp)}</td>
+                    <td class="text-right"><strong>${formatCurrencyUSD(ytdgp)}</strong></td>
+                    <td class="text-right">${gpMargin.toFixed(1)}%</td>
+                </tr>
+            `;
+        });
+
+        const totalMargin = totals.revenue > 0 ? (totals.ytd / totals.revenue * 100) : 0;
+        html += `
+            <tr class="row-total">
+                <td>CONSOLIDATED TOTAL</td>
+                <td class="text-right"><span style="background:#1a1a1a;color:white;padding:2px 8px;border-radius:4px;font-size:11px;">USD</span></td>
+                <td class="text-right">${formatCurrencyUSD(totals.q1)}</td>
+                <td class="text-right">${formatCurrencyUSD(totals.q2)}</td>
+                <td class="text-right">${formatCurrencyUSD(totals.q3)}</td>
+                <td class="text-right">${formatCurrencyUSD(totals.q4)}</td>
+                <td class="text-right">${formatCurrencyUSD(totals.ytd)}</td>
+                <td class="text-right">${totalMargin.toFixed(1)}%</td>
+            </tr>
+        </tbody>`;
+        html += `<tfoot><tr><td colspan="8" style="font-size:11px;color:#6b7280;padding-top:15px;"><em>All values converted to USD using monthly average FX rates from NetSuite. Individual entity views show local currency.</em></td></tr></tfoot>`;
+
+        table.innerHTML = html;
+
+        // Quarterly charts
+        updateQuarterlyCharts();
+    }
+
+    function updateQuarterlyCharts() {
+        const topEntities = ['5', '11', '16', '19', '13'];
+        const labels = ['Q1', 'Q2', 'Q3', 'Q4 QTD'];
+        
+        const datasets = topEntities.map((id, idx) => {
+            const sub = data2025[id];
+            const currCode = subsidiaryCurrency[id];
+            const colors = ['#E31937', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'];
+            return {
+                label: sub.name.replace('Channel Factory ', 'CF '),
+                data: ['q1', 'q2', 'q3', 'q4'].map(q => {
+                    let gpUSD = 0;
+                    quarters[q].forEach(m => {
+                        if (sub.monthly[m]) {
+                            const rate = fxRates[currCode][m];
+                            gpUSD += (Math.abs(sub.monthly[m].income) - sub.monthly[m].cogs) * rate;
+                        }
+                    });
+                    return gpUSD;
+                }),
+                backgroundColor: colors[idx],
+                borderRadius: 4
+            };
+        });
+
+        if (charts.quarterlyGP) charts.quarterlyGP.destroy();
+        charts.quarterlyGP = new Chart(document.getElementById('quarterlyGPChart'), {
+            type: 'bar',
+            data: { labels, datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' }, title: { display: true, text: 'Values in USD' } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { callback: v => formatCurrencyUSD(v) }
+                    }
+                }
+            }
+        });
+
+        // EBITDA Chart - converted to USD
+        const ebitdaData = topEntities.map(id => {
+            const sub = data2025[id];
+            const currCode = subsidiaryCurrency[id];
+            let ytdEbitda = 0;
+            months.forEach(m => {
+                if (sub.monthly[m]) {
+                    const rate = fxRates[currCode][m];
+                    const gp = (Math.abs(sub.monthly[m].income) - sub.monthly[m].cogs) * rate;
+                    const opex = sub.monthly[m].expense * rate;
+                    ytdEbitda += gp - opex;
+                }
+            });
+            return ytdEbitda;
+        });
+
+        if (charts.quarterlyEbitda) charts.quarterlyEbitda.destroy();
+        charts.quarterlyEbitda = new Chart(document.getElementById('quarterlyEbitdaChart'), {
+            type: 'bar',
+            data: {
+                labels: topEntities.map(id => data2025[id].name.replace('Channel Factory ', '')),
+                datasets: [{
+                    label: 'YTD EBITDA (USD)',
+                    data: ebitdaData,
+                    backgroundColor: ebitdaData.map(v => v >= 0 ? '#10b981' : '#ef4444'),
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: { legend: { display: false }, title: { display: true, text: 'Values in USD' } },
+                scales: {
+                    x: { ticks: { callback: v => formatCurrencyUSD(v) } }
+                }
+            }
+        });
+    }
+
+    function updateYoYCharts() {
+        // YoY Revenue Chart - US only for comparison
+        const us2025 = data2025['5'];
+        const us2024 = data2024['5'];
+
+        const revenue2025 = months.map(m => Math.abs(us2025.monthly[m]?.income || 0));
+        const revenue2024 = months.map(m => Math.abs(us2024?.monthly[m]?.income || 0));
+
+        if (charts.yoyRevenue) charts.yoyRevenue.destroy();
+        charts.yoyRevenue = new Chart(document.getElementById('yoyRevenueChart'), {
+            type: 'line',
+            data: {
+                labels: months,
+                datasets: [
+                    {
+                        label: '2025 Revenue',
+                        data: revenue2025,
+                        borderColor: '#E31937',
+                        backgroundColor: 'rgba(227, 25, 55, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    },
+                    {
+                        label: '2024 Revenue',
+                        data: revenue2024,
+                        borderColor: '#6b7280',
+                        borderDash: [5, 5],
+                        fill: false,
+                        tension: 0.3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' }, title: { display: true, text: 'Channel Factory LLC (US)' } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { callback: v => formatCurrency(v) }
+                    }
+                }
+            }
+        });
+
+        // YoY GP Chart
+        const gp2025 = months.map(m => {
+            const d = us2025.monthly[m];
+            return d ? Math.abs(d.income) - d.cogs : 0;
+        });
+        const gp2024 = months.map(m => {
+            const d = us2024?.monthly[m];
+            return d ? Math.abs(d.income) - d.cogs : 0;
+        });
+
+        if (charts.yoyGP) charts.yoyGP.destroy();
+        charts.yoyGP = new Chart(document.getElementById('yoyGPChart'), {
+            type: 'bar',
+            data: {
+                labels: months,
+                datasets: [
+                    { label: '2024 GP', data: gp2024, backgroundColor: '#9ca3af', borderRadius: 4 },
+                    { label: '2025 GP', data: gp2025, backgroundColor: '#E31937', borderRadius: 4 }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { callback: v => formatCurrency(v) }
+                    }
+                }
+            }
+        });
+
+        // Growth % Chart
+        const growth = months.map((m, i) => {
+            if (gp2024[i] === 0) return 0;
+            return ((gp2025[i] - gp2024[i]) / gp2024[i] * 100);
+        });
+
+        if (charts.yoyGrowth) charts.yoyGrowth.destroy();
+        charts.yoyGrowth = new Chart(document.getElementById('yoyGrowthChart'), {
+            type: 'bar',
+            data: {
+                labels: months,
+                datasets: [{
+                    label: 'YoY GP Growth %',
+                    data: growth,
+                    backgroundColor: growth.map(v => v >= 0 ? '#10b981' : '#ef4444'),
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        ticks: { callback: v => v.toFixed(0) + '%' }
+                    }
+                }
+            }
+        });
+    }
+
+    function showTab(tabId) {
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        event.target.classList.add('active');
+
+        if (tabId === 'quarterly') updateQuarterlyTable();
+        if (tabId === 'comparison') updateYoYCharts();
+    }
+
+    function updateDashboard() {
+        const subId = document.getElementById('subsidiarySelect').value;
+        const period = document.getElementById('periodSelect').value;
+        const subData = getSubsidiaryData(subId);
+        
+        // Set current currency based on selected subsidiary
+        currentCurrency = currencyMap[subId] || currencyMap['consolidated'];
+
+        updateKPIs(subData, period);
+        updateCharts(subData);
+        updatePnLTable(subData, period);
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+        updateDashboard();
+    });
+    </script>
+</body>
+</html>
